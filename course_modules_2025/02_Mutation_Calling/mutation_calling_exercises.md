@@ -589,7 +589,28 @@ We now have a somatic VCF file from MuTect2 (in the VM, there should be a backup
 mutational signatures, we should run some basic quality control and assess some of our variants in IGV.
 The following section will give a brief overview of quality control and assessment techniques.
 
+## Filtering Mutect2 Calls
 
+By default, Mutect2 applies no filters. To properly filter our variants we need to run the `FilterMutectCalls` subcommand in
+the GATK package.
+
+```bash
+gatk FilterMutectCalls \
+    --variant TCRBOA2-Tumor.TCRBOA2-Normal.region.vcf \
+    --reference Homo_sapiens_assembly38.chr22_28650000-28750000.fasta \ 
+    --output TCRBOA2-Tumor.TCRBOA2-Normal.region.filtered.vcf \
+    --filtering-stats TCRBOA2-Tumor.TCRBOA2-Normal.region.filtering_stats
+```
+
+Now, we can select just the `PASS` variants using gatk's `SelectVariants` tool.
+
+```bash
+gatk SelectVariants \
+    -R Homo_sapiens_assembly38.chr22_28650000-28750000.fasta \
+    -V TCRBOA2-Tumor.TCRBOA2-Normal.region.filtered.vcf \
+    --exclude-filtered \
+    -O TCRBOA2-Tumor.TCRBOA2-Normal.region.mutect.filtered.pass_only.vcf.gz
+```
 
 ## Variant assessment and quality control
 
@@ -619,10 +640,10 @@ models and clever heuristics, they still very often make erroneous calls (poor s
 We must filter our variants to generate the most specific, sensitive set of variants we can.
 
 
-We can view our variants using the Unix program `less`. 
+We can view our variants using the Unix program `zless`. 
 
 ```bash
-less -S TCRBOA2-Tumor.TCRBOA2-Normal.region.vcf
+zless -S TCRBOA2-Tumor.TCRBOA2-Normal.region.mutect.filtered.pass_only.vcf.gz
 ```
 
 The VCF header (lines beginning with `#`) has information about the fields within the file.
