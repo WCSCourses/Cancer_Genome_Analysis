@@ -102,7 +102,7 @@ bwa mem -t ${THREADS} \
   samtools sort -@ ${THREADS} -o ${SAMPLE}.sorted.bam -
 ```
 
-Expected runtime: 2-6 hours for 30X WGS (depends on CPU cores)
+Expected runtime: 2-48 hours for 30X WGS (depends on CPU cores)
 
 **What do these parameters mean?**
 - `-t ${THREADS}`: Use multiple CPU cores for speed
