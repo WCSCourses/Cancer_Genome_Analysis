@@ -348,7 +348,7 @@ time bwa mem -Y \
     | samtools sort \
     -O BAM \
     -@ 2 \
-    -o TCRBOA2-Normal.region.bam
+    -o TCRBOA2-N-WEX.region.sorted.bam
 ```
 
 Expected runtime: 30-50 minutes for whole exome chr22 (Very fast for sample).
@@ -361,7 +361,7 @@ index our BAM later.
 Let's check if our BAM is valid - we can do so with `samtools quickcheck`:
 
 ```bash
-samtools quickcheck TCRBOA2-N-WEX.region.bam
+samtools quickcheck TCRBOA2-Normal-WEX.region.sorted.bam
 ```
 
 Expected runtime: 1 second.
@@ -406,9 +406,9 @@ We'll use the Picard MarkDuplicates tool to mark duplicates. Conveniently, this 
 ```bash
 time gatk MarkDuplicates \
     --java-options -Xmx4g \
-    -I TCRBOA2-Normal.region.bam \
-    -O TCRBOA2-Normal.region.markdups.bam \
-    -M TCRBOA2-Normal.region.markdups.metrics.txt
+    -I TCRBOA2-Normal-WEX.region.sorted.bam \
+    -O TCRBOA2-Normal-WEX.region.sorted.markdups.bam \
+    -M TCRBOA2-Normal-WEX.region.sorted.markdups.metrics.txt
 ```
 
 We'll need to do the same for our tumor sample:
@@ -416,9 +416,9 @@ We'll need to do the same for our tumor sample:
 ```bash
 time gatk MarkDuplicates \
     --java-options -Xmx4g \
-    -I TCRBOA2-Tumor.region.bam\
-    -O TCRBOA2-Tumor.region.markdups.bam \
-    -M TCRBOA2-Tumor.region.markdups.metrics.txt
+    -I TCRBOA2-Tumor-WEX.region.sorted.bam\
+    -O TCRBOA2-Tumor-WEX.region.sorted.markdups.bam \
+    -M TCRBOA2-Tumor-WEX.region.sorted.markdups.metrics.txt
 ```
 
 Expected runtime: 5 minutes per sample
@@ -455,19 +455,19 @@ The BQSR process will normalize the quality scores within a BAM file based on a 
 ```bash
 time gatk BaseRecalibrator \
     --java-options -Xmx4g \
-    --input TCRBOA2-Normal.region.markdups.bam \
-    --output TCRBOA2-Normal.region.markdups.BQSR-REPORT.txt \
-    --known-sites Homo_sapiens_assembly38.known_indels.chr22_28650000-28750000.vcf.gz \
-    --reference Homo_sapiens_assembly38.chr22_28650000-28750000.fasta
+    --input TCRBOA2-Normal-WEX.region.sorted.markdups.bam \
+    --output TCRBOA2-Normal-WEX.region.sorted.markdups.BQSR-REPORT.txt \
+    --known-sites ../references/Homo_sapiens_assembly38.known_indels.chr1_50000000_51000000.vcf.gz \
+    --reference ../references/reference.fasta
 ```
 
 ```bash
 time gatk BaseRecalibrator \
     --java-options -Xmx4g \
-    --input TCRBOA2-Tumor.region.markdups.bam \
-    --output TCRBOA2-Tumor.region.markdups.BQSR-REPORT.txt \
-    --known-sites Homo_sapiens_assembly38.known_indels.chr22_28650000-28750000.vcf.gz \
-    --reference Homo_sapiens_assembly38.chr22_28650000-28750000.fasta
+    --input TCRBOA2-Tumor-WEX.region.sorted.markdups.bam \
+    --output TCRBOA2-Tumor-WEX.region.sorted.markdups.BQSR-REPORT.txt \
+    --known-sites ../references/Homo_sapiens_assembly38.known_indels.chr1_50000000_51000000.vcf.gz \
+    --reference ../references/reference.fasta
 ```
 
 
@@ -494,20 +494,20 @@ command and the output files will be provided.
 ## Apply BQSR to normal BAM
 time gatk ApplyBQSR \
     --java-options -Xmx4g \
-    -R Homo_sapiens_assembly38.chr22_28650000-28750000.fasta \
-    -I TCRBOA2-Normal.region.markdups.bam \
-    --bqsr-recal-file TCRBOA2-Normal.region.markdups.BQSR-REPORT.txt \
-    -O TCRBOA2-Normal.region.markdups.baseRecal.bam
+    -R ../references/reference.fasta \
+    -I TCRBOA2-Normal-WEX.region.sorted.markdups.bam \
+    --bqsr-recal-file TCRBOA2-Normal-WEX.region.sorted.markdups.BQSR-REPORT.txt \
+    -O TCRBOA2-Normal-WEX.region.sorted.markdups.baseRecal.bam
 ```
 
 ```bash
 ## Apply BQSR to tumor BAM
 time gatk ApplyBQSR \
     --java-options -Xmx4g \
-    -R Homo_sapiens_assembly38.chr22_28650000-28750000.fasta \
-    -I TCRBOA2-Tumor.region.markdups.bam \
-    --bqsr-recal-file TCRBOA2-Tumor.region.markdups.BQSR-REPORT.txt \
-    -O TCRBOA2-Tumor.region.markdups.baseRecal.bam
+    -R ../references/reference.fasta \
+    -I TCRBOA2-Tumor-WEX.region.sorted.markdups.bam \
+    --bqsr-recal-file TCRBOA2-Tumor-WEX.region.sorted.markdups.BQSR-REPORT.txt \
+    -O TCRBOA2-Tumor-WEX.region.sorted.markdups.baseRecal.bam
 ```
 
 ## Indexing BAM files
@@ -516,14 +516,14 @@ To call variants, we'll need to index our BAM files. We can use the `samtools in
 command to do so:
 
 ```bash
-time samtools index TCRBOA2-Tumor.region.markdups.baseRecal.bam
+time samtools index TCRBOA2-Tumor-WEX.region.sorted.markdups.baseRecal.bam
 ```
 
 Estimated runtime: 40s
 
 
 ```bash
-time samtools index TCRBOA2-Normal.region.markdups.baseRecal.bam
+time samtools index TCRBOA2-Normal-WEX.region.sorted.markdups.baseRecal.bam
 ```
 
 Estimated runtime: 40s
@@ -547,13 +547,13 @@ tell MuTect2 to only call that interval using `-L chr22`).
 
 ```bash
 gatk Mutect2 \
-    -R Homo_sapiens_assembly38.chr22_28650000-28750000.fasta \
-    --input TCRBOA2-Tumor.region.markdups.baseRecal.bam \
+    -R ../references/reference.fasta \
+    --input TCRBOA2-Tumor-WEX.region.sorted.markdups.baseRecal.bam \
     --tumor-sample TCRBOA2-Tumor \
-    --input TCRBOA2-Normal.region.markdups.baseRecal.bam \
+    --input TCRBOA2-Normal-WEX.region.sorted.markdups.baseRecal.bam \
     --normal-sample TCRBOA2-Normal \
-    -L chr22 \
-    --output TCRBOA2-Tumor.TCRBOA2-Normal.region.vcf
+    -L chr1:50000000-51000000 \
+    --output TCRBOA2-Tumor-WEX.TCRBOA2-Normal-WEX.region.vcf
 ```
 
 Expected runtime: 30-60 minutes
@@ -596,20 +596,20 @@ the GATK package.
 
 ```bash
 gatk FilterMutectCalls \
-    --variant TCRBOA2-Tumor.TCRBOA2-Normal.region.vcf \
-    --reference Homo_sapiens_assembly38.chr22_28650000-28750000.fasta \ 
-    --output TCRBOA2-Tumor.TCRBOA2-Normal.region.filtered.vcf \
-    --filtering-stats TCRBOA2-Tumor.TCRBOA2-Normal.region.filtering_stats
+    --filtering-stats TCRBOA2-Tumor-WEX.TCRBOA2-Normal-WEX.region.filtering_stats \
+    --variant TCRBOA2-Tumor-WEX.TCRBOA2-Normal-WEX.region.vcf \
+    --reference ../references/reference.fasta \
+    --output TCRBOA2-Tumor-WEX.TCRBOA2-Normal-WEX.region.filtered.vcf
 ```
 
 Now, we can select just the `PASS` variants using gatk's `SelectVariants` tool.
 
 ```bash
 gatk SelectVariants \
-    -R Homo_sapiens_assembly38.chr22_28650000-28750000.fasta \
-    -V TCRBOA2-Tumor.TCRBOA2-Normal.region.filtered.vcf \
+    -R ../references/reference.fasta \
+    -V TCRBOA2-Tumor-WEX.TCRBOA2-Normal-WEX.region.filtered.vcf \
     --exclude-filtered \
-    -O TCRBOA2-Tumor.TCRBOA2-Normal.region.mutect.filtered.pass_only.vcf.gz
+    -O TCRBOA2-Tumor-WEX.TCRBOA2-Normal-WEX.region.mutect.filtered.pass_only.vcf.gz
 ```
 
 ## Variant assessment and quality control
@@ -625,13 +625,11 @@ of what pipeline or software your use.
 How many variants are in our VCF file?  
 (Hint: we can use `grep -c "<pattern>" <file>` to count the number of lines that match a pattern in a file.
 If we want the number of lines that _don't_ match a pattern, we can use `grep -c -v "<pattern>" <file>`).
-
+**Hint**: you can `cat` a file ending in `.gz` using `zless`
 ```
 
 
 ```
-
-**Hint: we might have chosen a region that isn't mutated in our tumor**
 
 ## Manual Review
 
@@ -643,7 +641,7 @@ We must filter our variants to generate the most specific, sensitive set of vari
 We can view our variants using the Unix program `zless`. 
 
 ```bash
-zless -S TCRBOA2-Tumor.TCRBOA2-Normal.region.mutect.filtered.pass_only.vcf.gz
+zless -S TCRBOA2-Tumor-WEX.TCRBOA2-Normal-WEX.region.mutect.filtered.pass_only.vcf.gz
 ```
 
 The VCF header (lines beginning with `#`) has information about the fields within the file.
