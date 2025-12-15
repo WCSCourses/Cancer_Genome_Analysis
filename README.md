@@ -52,8 +52,8 @@ Participants are required to take the following pre-course modules (This will be
 
 | Course Date | Course Title | Location |Citation DOI |
 |-------------|--------------|----------|-------------|
-| 26 November–1 December 2023  | [Cancer Genome Analysis - Latin America & the Caribbean](https://github.com/WCSCourses/Cancer_Genome_Analysis_2023) | Universidad de la República, Montevideo, Uruguay | [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14593500.svg)](https://doi.org/10.5281/zenodo.14593500) |
-| 30 March–4 April 2025  | [Cancer Genome Analysis - Asia](https://github.com/WCSCourses/Cancer_Genome_Analysis_2025) | Khon Kaen University, Thailand |Citation DOI |
+| 26 November–1 December 2023  | [Cancer Genome Analysis - Latin America & the Caribbean](https://github.com/WCSCourses/Cancer_Genome_Analysis_2023) | Universidad de la República, Montevideo, Uruguay |[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14593500.svg)](https://doi.org/10.5281/zenodo.14593500) |
+| 30 March–4 April 2025  | [Cancer Genome Analysis - Asia](https://github.com/WCSCourses/Cancer_Genome_Analysis_2025) | Khon Kaen University, Thailand | [![DOI](https://zenodo.org/badge/907426549.svg)](https://doi.org/10.5281/zenodo.14593499) |
 
 ******
 
