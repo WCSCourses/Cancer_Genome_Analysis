@@ -1,0 +1,404 @@
+---
+title: "dnds"
+output: html_document
+date: "2025-10-23"
+---
+
+# Driver detection using dndscv
+
+Adapted from Federico Abascal's practical
+
+## **Detection of drivers in bladder carcinoma**
+
+We will be working with a dataset of bladder cancer from the TCGA consortium.
+
+### **Generating the input file**
+
+dndscv works with an input file that consist of 5 columns. 
+1) Sample ID 2) Chromosome 3) Position 4) Reference 5) Mutation
+
+We can extract this data from MAF files columns:
+
+1)  Tumor_Sample_Barcode
+2)  Chromosome
+3)  Start_Position
+4)  Reference_Allele
+5)  Tumor_Seq_Allele2
+
+The input file can also be generated from vcf files using the following columns:
+
+1)  Tumor column (column number can differ based on the tool used to generate the vcf file)
+2)  Chrom
+3)  POS
+4)  REF
+5)  ALT
+
+For this practical we have already prepared an input file for you
+`TCGA-BLCA.5col`. However, in your own work, you will have to typically
+generate this input file on your own. The easiest way to structure this
+input is by converting your variant calling output (.vcf formatted file)
+to .maf format. (See earlier discussion on the topic)
+
+### **Data loading and exploration**
+
+Once we have an appropriately formatted 5 column input file with a
+suitable header we should load the data and explore it to ensure that
+the data are what we expect them to be and to check for any unexpected
+errors.
+
+**Load the input file**
+
+```{r}
+getwd()
+```
+
+```{r}
+library(dndscv)
+muts = read.table("TCGA-BLCA.5col", header=TRUE, sep="\t", stringsAsFactors=FALSE)
+head(muts)
+```
+
+To count the number of samples we can run the following command:
+
+```{r}
+length(unique(muts$sampleID))
+```
+
+And to get the number of mutations
+
+```{r}
+nrow(muts)
+```
+
+There are `370` donors and a total of `5318` mutations.
+
+To see the mutational burden per sample we can do the following:
+
+```{r}
+barplot(sort(table(muts$sampleID)), ylab="Number of mutations", xlab="Donors", las=2, names.arg="")
+```
+
+> **Are there any hypermutators in the cohort?**
+
+*It is relevant to explore our data in this way because hypermutators
+can have a negative impact on the statistical power to detect drivers
+and because some hypermutators (e.g. POLE mutant tumors) are under
+mutational processes not properly modeled by a
+trinucleotide-substitution model. Although there is no exact definition
+of a hypermutator, usually having more than 500 mutations in the exome
+(approximately 5.6810\^{4} mutations in the whole genome) can be
+considered a hypermutator. In general, it is good to exclude these
+samples from this analysis.*
+
+------------------------------------------------------------------------
+
+## **Driver detection**
+
+We will run dndscv to detect drivers in bladder cancer removing
+hypermutators (n>500)
+
+-   samples that have more than 3 mutations in a given gene (to protect
+    against loss of sensitivity from clustered artefacts)
+
+### **Gene level signals of selection**
+
+```{r}
+# analyses of selection using the dNdScv and dNdSloc models
+dout = dndscv(muts, max_muts_per_gene_per_sample=3,max_coding_muts_per_sample=500,      outmats=T)
+```
+
+While running dndscv you will see some warnings. One of them reads "Same
+mutations observed in different sampleIDs. Please verify that these are
+independent events and remove duplicates otherwise." This warning
+relates to that only unique mutations are listed in the input file. For
+example if your input contains the same mutation in several related
+samples (samples that come from the same tumor) they should only be
+listed once in the file.
+
+You will also see a warning indicating that some mutations have a wrong
+reference. This is because of a error in the original TCGA file. We can
+ignore this as the number of affected bases is very small.
+
+**Looking at the output**
+
+dndscv generates a list of objects as output. You can look at the
+contents of the list like this.
+
+```{r}
+names(dout)
+```
+
+The most relevant output often is `sel_cv` as it contains the results of
+the neutrality tests at gene level. The `globaldnds` output has a table
+with global MLEs for the dN/dS ratios across all genes and their
+confidence intervals. The `annotmuts` output contains a table with
+annotated coding mutations. `genemuts` has a table with observed and
+expected number of mutations per gene.
+
+#### **Table of significant genes**
+
+`dout$sel_cv` contains the results for all the analyzed genes.
+
+We can look at the significant genes in the table by filtering for genes
+with a `qglobal_cv < 0.1`. `qglobal` is the multiple hypothesis
+correction q-value for the `pglobal_cv` (the combined p-value for the
+different p-values calculated.
+
+```{r}
+dout$sel_cv[which(dout$sel_cv$qglobal_cv<0.1),]
+```
+
+The `sel_cv` table contains `3` types of columns:
+
+-   the data: the number of mutations of each class for each gene
+
+-   the coefficients of selection for mutations of each mutation class
+    *(w)*
+
+-   the associated statistical significance values each mutation class
+    *(p and q values) for each class*
+
+> **How many significant genes do you find?**
+
+```         
+```
+
+> **Is there any gene under negative selection?**
+
+```         
+```
+
+> **Which genes are oncogenes? Which genes are tumor suppressors?**
+
+-   *Tip: look at the number and types of mutations n_syn, n_mis.......*
+
+```         
+```
+
+> **Considering the coefficient of selection for missense mutations in
+> *ARID1A* how many missense mutations had been selected for in this
+> cohort?**
+
+-   *Tip: the coefficient wmis_cvis 4.4825244 and there are 21 missense
+    mutations in\*ARID1A.*
+
+-   *Tip 2: (w-1)/w gives the proportion under positive selection.*
+
+-   *Tip 3: 95% confidence intervals for the selection coefficients can
+    be obtained with `geneci(dout,gene_list="ARID1A")`.*
+
+-   *Tip 4: Have a look at `genemuts` to see how many mutations were
+    expected\**
+    
+```         
+```
+
+```{r}
+dout$genemuts[which(dout$genemuts$gene_name=="ARID1A"),]
+```
+
+> **Are all those missense mutations under selection?**
+
+Let's take a look at the mutations in *PIK3CA*:
+
+```{r}
+dout$annotmuts[which(dout$annotmuts$gene=="PIK3CA"),]
+```
+
+Look at the aachange column to see the amino acid changes generated by
+the mutations.
+
+> **Is there any recurrent mutation (hotspot)?**
+
+```{r}
+PIK3CA = dout$annotmuts[which(dout$annotmuts$gene=="PIK3CA"),]
+table(PIK3CA$aachange)
+```
+
+### **Global signals of selection**
+
+dndscv also estimates global dN/dS ratios in aggregate for all the
+genes. You can access this data in the dndscv output:
+
+```{r}
+print(dout$globaldnds)
+```
+
+> **Is there evidence of positive or negative selection?**
+
+`wspl` is lower than 1. That could mean negative selection but this
+result is often obtained with exome data because of the poorer
+sequencing coverage at splice sites. `dndscv` interprets the depletion
+of mutations at splice sites as negative selection.
+
+However all the other coefficients are \> 1 and their 95% confidence
+intervals too.
+
+We can use the `globaldnds` information to estimate the number of
+missense driver mutations per sample.
+
+-   There are 30610 missense mutations in the cohort, and the
+    coefficient of selection `wmis` is 1.0524348.
+
+-   Calculate the proportion of missense mutations under positive
+    selection using the formula\* `(w-1)/w`
+
+-   Find out the actual number of missense mutations under positive
+    selection: `n_mis * (w-1)/w`
+
+-   Calculate the average per sample:
+    `( n_mis * (w-1)/w ) / num_samples`
+
+You can obtain all the info with:
+
+```{r}
+w = dout$globaldnds[1,2]
+
+n_mis = length(which(dout$annotmuts$impact=="Missense"))
+
+num_samples = length(table(unique(muts$sampleID)))
+```
+
+## **Site/Codon level signals of selection**
+
+### **Analysis of hotspots**
+
+We will now look for signals of positive selection at specific DNA or
+protein sites.
+
+Firstly, have a look at the `annotmuts` output and try to determine by
+eye if there are hotspots. A couple lines of code which may help with
+the task:
+
+```{r}
+
+dout$annotmuts$gene_and_aachange = paste(dout$annotmuts$gene, dout$annotmuts$aachange, dout$annotmuts$ntchange, dout$annotmuts$pos, dout$annotmuts$impact, sep=":")
+
+sort(table(dout$annotmuts$gene_and_aachange),decreasing=T)[1:10]
+```
+
+Go to the COSMIC database to gather further information about these
+hotspots. For example:
+
+FGFR3 <https://cancer.sanger.ac.uk/cosmic/gene/analysis?ln=FGFR3>
+
+Look at other hotspots, the domain structure, the 3D structure
+
+The Hallmarks of Cancer has also valuable information on drivers:
+<https://cancer.sanger.ac.uk/cosmic/census-page/FGFR3>
+
+> **Do you think hotspots are more frequent in oncogenes or in tumour
+> suppressors?**
+
+```         
+```
+
+### **Using sitednds: selection at specific sites**
+
+**Running sitednds**
+
+One of the limitations of `sitednds` is that artefacts and contamination
+are common in cancer datasets and can generate false positive mutation
+calls. To reduce the risk of false positives and increase the signal to
+noise ratio, we will only consider mutations in Cancer Gene Census genes
+(v81).
+
+The `sitednds` function takes the output of `dndscv` as input. In order
+for the `dndsout` object to be compatible with sitednds we must use the
+`"outmats=T"` argument in `dndscv`.
+
+```{r}
+# Load the the Cancer Gene Census (v81) genes
+data("cancergenes_cgc81", package="dndscv")
+dout_cancergenes = dndscv(muts, outmats=T, gene_list=known_cancergenes)
+```
+
+```{r}
+sout = sitednds(dout_cancergenes)
+```
+
+The output list contains the following objects:
+
+```{r}
+names(sout)
+```
+
+`recursites` has information on the significant sites
+
+```{r}
+sout$recursites[which(sout$recursites$qval<0.1),]
+```
+
+This output shows the hotspots studied, their position, the gene
+affected, amino acid change, the number of times the mutation was
+observed in the data, the number of expected mutations at the site by
+chance, the dN/dS ratio and significance values.
+
+### **Using codondnds: selection at specific codons**
+
+**Running codondnds**
+
+We will not run it because it requires creating a new database, which
+can take about 20', but this is how one would do it.
+
+```{r}
+data("refcds_hg19", package = "dndscv")
+RefCDS_codon = buildcodon(RefCDS)
+codon_dnds = codondnds(dout_cancergenes, RefCDS_codon, theta_option="conservative", min_recurr=2)
+codon_dnds$recurcodons[which(codon_dnds$recurcodons$qval<0.1),]
+```
+
+The output should look something like this:
+
+```{r}
+codon_dnds$recurcodons[which(codon_dnds$recurcodons$qval<0.1),]
+```
+
+> `sitednds` looks for selection (mutation recurrence over random
+> expectations) at specific DNA positions, while `codondnds` looks for
+> selection at codons. Each method may be more sensitive for different
+> kinds of hotspots, hence we recommend trying both.
+
+## **Predicting drivers in a given donor using the Cancer Genome Interpreter**
+
+We will use the Cancer Genome Interpreter to predict drivers in one of our donors.
+
+To make it more interesting, each one can select one donor randomly:
+
+```{r}
+random_donor = sample(unique(muts$sampleID),1)
+muts_in_random_donor = muts[which(muts$sampleID == random_donor), c("chr","pos","ref","mut")]
+cat(random_donor, " donor has ",nrow(muts_in_random_donor), " mutations\n",sep="")
+```
+
+```{r}
+write.table(muts_in_random_donor, file=paste(random_donor,".tsv",sep=""), col.names=F, row.names=F, quote=F )
+```
+
+Copy those mutations and paste them here:
+<https://www.cancergenomeinterpreter.org/analysis>
+
+Select hg19 as "Reference genome" and click "Run". The analysis will
+take a few minutes.
+
+You can also explore bladder cancer at Intogen:
+<https://www.intogen.org/search> There you would find 78 drivers defined
+for bladder cancer
+
+## **Other useful tips**
+
+### **Reference Genomes**
+
+By default dndscv uses the GRCh37/hg19 reference genome assembly. If you
+need to use a different assembly or a different species you can create a
+new reference database (RefCDS object). A tutorial to do so can be found
+here:
+<http://htmlpreview.github.io/?http://github.com/im3sanger/dndscv/blob/master/vignettes/buildref.html>
+
+Pre-made reference databases for other popular assemblies such as the
+GRCh38 are also available here:
+<https://github.com/im3sanger/dndscv_data/tree/master/data>
+
+### **Troubleshooting**
+
+You can identify if your data is noisy (variant calling problems) by inspecting your dndscv output. If you see a very large excess of synonymous mutations (compare observed number of synonymous mutations against the expected) it can be a sign or presence of artefacts or contamination in your data.
